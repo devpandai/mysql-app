@@ -3,16 +3,14 @@ pipeline {
 
   environment {
     REGISTRY = "ghcr.io/devpandai"
-    IMAGE_NAME = "mysql"
+    IMAGE_NAME = "mysql-app"
     IMAGE_TAG = "latest"
-    GITOPS_REPO = "https://github.com/devpandai/mysql-deploy.git"
   }
 
   stages {
-
     stage('Checkout') {
       steps {
-        git branch: 'main', url: 'https://github.com/devpandai/mysql.git'
+        git branch: 'main', url: 'https://github.com/devpandai/mysql-app.git'
       }
     }
 
@@ -31,34 +29,6 @@ pipeline {
             echo $TOKEN | docker login ghcr.io -u devpandai --password-stdin
             docker push ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
           """
-        }
-      }
-    }
-
-    stage('Update GitOps Repo') {
-      steps {
-        withCredentials([string(credentialsId: 'github-token', variable: 'TOKEN')]) {
-          script {
-            sh """
-              set -e
-              rm -rf deploy-repo
-              git clone https://devpandai:${TOKEN}@github.com/devpandai/mysql-deploy.git deploy-repo
-              cd deploy-repo
-
-              sed -i 's|image:.*|image: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}|' mysql-deployment.yaml
-
-              git config user.name "jenkins"
-              git config user.email "jenkins@local"
-              git add .
-
-              if git diff --cached --quiet; then
-                echo "No changes to commit"
-              else
-                git commit -m "update image to ${IMAGE_TAG}"
-                git push
-              fi
-            """
-          }
         }
       }
     }
